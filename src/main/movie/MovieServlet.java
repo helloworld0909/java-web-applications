@@ -1,21 +1,21 @@
 package main.movie;
 
+import javax.annotation.Resource;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.sql.DataSource;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
-import javax.sql.DataSource;
 
-import javax.annotation.Resource;
-import javax.servlet.ServletException;
-import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 
-
-@WebServlet(name = "MovieServlet", urlPatterns = "/movie")
+@WebServlet(name = "MovieServlet", urlPatterns = "/api/movie")
 public class MovieServlet extends HttpServlet {
 
     private static final long serialVersionUID = 1L;
@@ -24,54 +24,51 @@ public class MovieServlet extends HttpServlet {
     @Resource(name = "jdbc/moviedb")
     private DataSource dataSource;
 
-    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        handleRequest(request, response);
+    }
 
-        // set response mime type
-        response.setContentType("text/html");
+    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        handleRequest(request, response);
+    }
 
-        // get the printwriter for writing response
+    private void handleRequest(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        String id = request.getParameter("id");
+
         PrintWriter out = response.getWriter();
 
-        out.println("<html>");
-        out.println("<head><title>Show movies</title></head>");
-
         try {
-            // Create a new connection to database
             Connection connection = dataSource.getConnection();
-
-            // Declare a new statement
             Statement statement = connection.createStatement();
 
-            String query = "select * from movies limit 10";
+            String query = String.format(
+                    "select * from movies as m, stars_in_movies as sim, stars as s where m.id = sim.movieId and sim.starId = s.id and m.id = \"%s\";", id);
             ResultSet resultSet = statement.executeQuery(query);
 
-            // add table header row
-            out.println("<tr>");
-            out.println("<td>id</td>");
-            out.println("<td>title</td>");
-            out.println("<td>year</td>");
-            out.println("<td>director</td>");
-            out.println("</tr>");
+            resultSet.next();
 
-            // add a row for every star result
-            while (resultSet.next()) {
-                // get a star from result set
-                String id = resultSet.getString("id");
-                String title = resultSet.getString("title");
-                int year = resultSet.getInt("year");
-                String director = resultSet.getString("director");
+            JsonObject obj = new JsonObject();
 
-                out.println("<tr>");
-                out.println("<td>" + id + "</td>");
-                out.println("<td>" + title + "</td>");
-                out.println("<td>" + year + "</td>");
-                out.println("<td>" + director + "</td>");
-                out.println("</tr>");
-            }
+            obj.addProperty("movieId", resultSet.getString("movieId"));
+            obj.addProperty("title", resultSet.getString("title"));
+            obj.addProperty("year", resultSet.getString("year"));
+            obj.addProperty("director", resultSet.getString("director"));
 
-            out.println("</table>");
+            JsonArray starList = new JsonArray();
 
-            out.println("</body>");
+            do {
+                JsonObject star = new JsonObject();
+                star.addProperty("starId", resultSet.getString("starId"));
+                star.addProperty("name", resultSet.getString("name"));
+                star.addProperty("birthYear", resultSet.getString("birthYear"));
+                starList.add(star);
+            } while (resultSet.next());
+
+            obj.add("starList", starList);
+
+            out.write(obj.toString());
+            // set response status to 200 (OK)
+            response.setStatus(200);
 
             resultSet.close();
             statement.close();
@@ -80,14 +77,10 @@ public class MovieServlet extends HttpServlet {
         } catch (Exception e) {
             e.printStackTrace();
 
-            out.println("<body>");
-            out.println("<p>");
-            out.println("Exception in doGet: " + e.getMessage());
-            out.println("</p>");
-            out.print("</body>");
+            JsonObject obj = new JsonObject();
+            out.write(obj.toString());
+            response.setStatus(500);
         }
-
-        out.println("</html>");
         out.close();
     }
 }
