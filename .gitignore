@@ -23,6 +23,8 @@
 
 /.idea
 *.iml
+context.xml
+movie-data.sql
 
 
 
