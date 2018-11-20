@@ -29,28 +29,28 @@ function handleResult(resultData) {
     console.log("handleResult: populating movie info from resultData");
 
     // find the empty h3 body by id "movie_info"
-    let movieInfoElement = jQuery("#movie_info");
+    let movieInfoElement = $("#movie_info");
 
     // append two html <p> created to the h3 body, which will refresh the page
     movieInfoElement.append("<p>Movie Name: " + resultData["title"] + "</p>" +
-        "<p>Year: " + resultData["year"] + "</p>" + "<p>director: " + resultData["director"] + "</p>");
-
-    console.log("handleResult: populating star table from resultData");
+        "<p>Year: " + resultData["year"] + "</p>" + "<p>Director: " + resultData["director"] + "</p>");
 
     // Populate the star table
     // Find the empty table body by id "movie_table_body"
-    let movieTableBodyElement = jQuery("#star_table_body");
+    let starTableBodyElement = $("#star_table tbody");
+    let starList = resultData["starList"];
 
     // Concatenate the html tags with resultData jsonObject to create table rows
-    for (let i = 0; i < Math.min(10, resultData.length); i++) {
+    for (let i = 0; i < Math.min(10, starList.length); i++) {
+
         let rowHTML = "";
         rowHTML += "<tr>";
-        rowHTML += "<th>" + resultData["starList"][i]["name"] + "</th>";
-        rowHTML += "<th>" + resultData["starList"][i]["birthYear"] + "</th>";
+        rowHTML += "<td>" + starList[i]["name"] + "</td>";
+        rowHTML += "<td>" + starList[i]["birthYear"] + "</td>";
         rowHTML += "</tr>";
 
         // Append the row created to the table body, which will refresh the page
-        movieTableBodyElement.append(rowHTML);
+        starTableBodyElement.append(rowHTML);
     }
 }
 
@@ -62,7 +62,7 @@ function handleResult(resultData) {
 let movieId = getParameterByName('id');
 
 // Makes the HTTP GET request and registers on success callback function handleResult
-jQuery.ajax({
+$.ajax({
     dataType: "json",  // Setting return data type
     method: "GET",// Setting request method
     url: "api/movie?id=" + movieId, // Setting request url

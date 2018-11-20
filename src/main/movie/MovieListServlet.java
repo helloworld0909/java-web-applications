@@ -1,5 +1,8 @@
 package main.movie;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.Connection;
@@ -14,7 +17,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 
-@WebServlet(name = "MovieListServlet", urlPatterns = "/movies")
+@WebServlet(name = "MovieListServlet", urlPatterns = "/api/movielist")
 public class MovieListServlet extends HttpServlet {
 
     private static final long serialVersionUID = 2L;
@@ -31,8 +34,7 @@ public class MovieListServlet extends HttpServlet {
         // get the printwriter for writing response
         PrintWriter out = response.getWriter();
 
-        out.println("<html>");
-        out.println("<head><title>Show movies</title></head>");
+        JsonArray returnData = new JsonArray();
 
         try {
             // Create a new connection to database
@@ -41,36 +43,28 @@ public class MovieListServlet extends HttpServlet {
             // Declare a new statement
             Statement statement = connection.createStatement();
 
-            String query = "select * from movies limit 10";
+            String query = "select movies.id, movies.title, movies.year, movies.director " +
+                    "from movies, ratings " +
+                    "where movies.id = ratings.movieId order by ratings.rating desc limit 10";
             ResultSet resultSet = statement.executeQuery(query);
 
             // add table header row
-            out.println("<tr>");
-            out.println("<td>id</td>");
-            out.println("<td>title</td>");
-            out.println("<td>year</td>");
-            out.println("<td>director</td>");
-            out.println("</tr>");
+
 
             // add a row for every star result
             while (resultSet.next()) {
                 // get a star from result set
-                String id = resultSet.getString("id");
-                String title = resultSet.getString("title");
-                int year = resultSet.getInt("year");
-                String director = resultSet.getString("director");
-
-                out.println("<tr>");
-                out.println("<td>" + id + "</td>");
-                out.println("<td>" + title + "</td>");
-                out.println("<td>" + year + "</td>");
-                out.println("<td>" + director + "</td>");
-                out.println("</tr>");
+                JsonObject movieObj = new JsonObject();
+                movieObj.addProperty("movieId", resultSet.getString("id"));
+                movieObj.addProperty("title", resultSet.getString("title"));
+                movieObj.addProperty("year", resultSet.getInt("year"));
+                movieObj.addProperty("director", resultSet.getString("director"));
+                returnData.add(movieObj);
             }
 
-            out.println("</table>");
-
-            out.println("</body>");
+            out.write(returnData.toString());
+            // set response status to 200 (OK)
+            response.setStatus(200);
 
             resultSet.close();
             statement.close();
@@ -78,15 +72,10 @@ public class MovieListServlet extends HttpServlet {
 
         } catch (Exception e) {
             e.printStackTrace();
-
-            out.println("<body>");
-            out.println("<p>");
-            out.println("Exception in doGet: " + e.getMessage());
-            out.println("</p>");
-            out.print("</body>");
+            JsonArray obj = new JsonArray();
+            out.write(obj.toString());
+            response.setStatus(500);
         }
-
-        out.println("</html>");
         out.close();
     }
 }
